@@ -1,6 +1,6 @@
 [book]
 authors = ["rakh1213"]
-language = "en"
-multilingual = false
+language = "ru"
+multilingual = true
 src = "src"
 title = "paninja story"
