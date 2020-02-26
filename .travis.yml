@@ -3,5 +3,7 @@ rust:
   - stable
   - beta
   - nightly
+os:
+  - osx
 script:
   - cargo build
