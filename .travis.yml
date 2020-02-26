@@ -3,10 +3,5 @@ rust:
   - stable
   - beta
   - nightly
-jobs:
-  allow_failures:
-    - rust: nightly
-  fast_finish: true
-cache: cargo
 script:
-  - cargo build --verbose --all
+  - cargo build
