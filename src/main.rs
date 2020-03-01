@@ -1,4 +1,4 @@
-use std::collections::{self, HashMap, LinkedList};
+use std::collections::HashMap;
 
 use ggez::*;
 use ggez::event::{self, KeyCode, KeyMods};
@@ -21,8 +21,8 @@ struct Hero {
 enum HeroAnimationEnum {
     Idle(u32),
     Run(u32),
-    Walk(u32),
-    Jump(u32),
+    // Walk(u32),
+    // Jump(u32),
     Dead(u32),
 }
 
@@ -124,7 +124,6 @@ impl event::EventHandler for PaninjaGameState {
                     hero_change_sprite(&mut self.hero);
                 }
             }
-            _ => println!("olo"),
         }
         Ok(())
     }
@@ -181,12 +180,12 @@ fn hero_move_position(hero: &mut Hero) {
 }
 
 fn hero_change_sprite(hero: &mut Hero) {
-    let next_sprite = &hero.hero_assets.images[&hero.hero_animation_enum][hero.count_sprite];
-    hero.sprite = img::clone(next_sprite);
-    hero.count_sprite = hero.count_sprite + 1;
     if hero.count_sprite >= hero.hero_assets.images[&hero.hero_animation_enum].len() {
         hero.count_sprite = 0;
     }
+    let next_sprite = &hero.hero_assets.images[&hero.hero_animation_enum][hero.count_sprite];
+    hero.sprite = img::clone(next_sprite);
+    hero.count_sprite = hero.count_sprite + 1;
 }
 
 fn main() -> GameResult {
@@ -199,7 +198,6 @@ fn main() -> GameResult {
         )
         .add_resource_path("./resources")
         .build()?;
-    println!("Context: {:?}, Event Loop: {:?}", context, event_loop);
     let game_state = &mut PaninjaGameState::new(context)?;
     event::run(context, event_loop, game_state)?;
     Ok(())
