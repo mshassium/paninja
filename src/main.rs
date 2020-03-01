@@ -3,10 +3,12 @@ use std::collections::HashMap;
 use ggez::*;
 use ggez::event::{self, KeyCode, KeyMods};
 use ggez::graphics;
+use ggez::graphics::{Color, DrawMode, DrawParam};
 use ggez::graphics::Image as img;
 use ggez::nalgebra;
 
 static HERO_RUN_FRAME_COUNT: u32 = 20;
+static HERO_DEAD_FRAME_COUNT: u32 = 20;
 
 struct Hero {
     sprite: graphics::Image,
@@ -15,15 +17,17 @@ struct Hero {
     hero_assets: HeroAnimationAssets,
     count_sprite: usize,
     hero_animation_enum: HeroAnimationEnum,
+    gravity: f32,
 }
 
 #[derive(PartialEq, Eq, Hash)]
 enum HeroAnimationEnum {
-    Idle(u32),
-    Run(u32),
-    // Walk(u32),
-    // Jump(u32),
-    Dead(u32),
+    Idle,
+    Run,
+    Walk,
+    Jump,
+    Dead,
+    Fall,
 }
 
 struct HeroAnimationAssets {
@@ -69,9 +73,9 @@ impl HeroAnimationAssets {
             img::new(ctx, "/dino/run/Run (8).png").unwrap(),
         ];
         let mut hero_animation_assets_map = HashMap::new();
-        hero_animation_assets_map.insert(HeroAnimationEnum::Idle(24), vec_idle_images);
-        hero_animation_assets_map.insert(HeroAnimationEnum::Dead(24), vec_dead_images);
-        hero_animation_assets_map.insert(HeroAnimationEnum::Run(HERO_RUN_FRAME_COUNT), vec_run_images);
+        hero_animation_assets_map.insert(HeroAnimationEnum::Idle, vec_idle_images);
+        hero_animation_assets_map.insert(HeroAnimationEnum::Dead, vec_dead_images);
+        hero_animation_assets_map.insert(HeroAnimationEnum::Run, vec_run_images);
         let hero_assets = HeroAnimationAssets {
             images: hero_animation_assets_map,
         };
@@ -83,15 +87,15 @@ impl Hero {
     fn new(ctx: &mut Context) -> GameResult<Hero> {
         let sprite = graphics::Image::new(ctx, "/dino/idle/Idle (1).png").unwrap();
         let default_draw_param = graphics::DrawParam::new()
-            .dest(nalgebra::Point2::new(30.0, 30.0))
-            .scale(nalgebra::Vector2::new(0.5, 0.5));
+            .dest(nalgebra::Point2::new(30.0, 30.0));
         let new_hero = Hero {
             sprite,
             draw_param: default_draw_param,
             velocity: 0.0,
             hero_assets: HeroAnimationAssets::new(ctx),
             count_sprite: 0,
-            hero_animation_enum: HeroAnimationEnum::Idle(24),
+            hero_animation_enum: HeroAnimationEnum::Idle,
+            gravity: 5.0,
         };
         Ok(new_hero)
     }
@@ -108,29 +112,22 @@ impl PaninjaGameState {
 impl event::EventHandler for PaninjaGameState {
     fn update(&mut self, _ctx: &mut Context) -> GameResult {
         hero_move_position(&mut self.hero);
-        match self.hero.hero_animation_enum {
-            HeroAnimationEnum::Dead(c) => {
-                while timer::check_update_time(_ctx, c) {
-                    hero_change_sprite(&mut self.hero);
-                }
-            }
-            HeroAnimationEnum::Run(c) => {
-                while timer::check_update_time(_ctx, c) {
-                    hero_change_sprite(&mut self.hero);
-                }
-            }
-            HeroAnimationEnum::Idle(c) => {
-                while timer::check_update_time(_ctx, c) {
-                    hero_change_sprite(&mut self.hero);
-                }
-            }
-        }
+        hero_change_state(_ctx, &mut self.hero);
         Ok(())
     }
 
     fn draw(&mut self, _ctx: &mut Context) -> GameResult {
         graphics::clear(_ctx, [0.1, 0.2, 0.3, 1.0].into());
         graphics::draw(_ctx, &self.hero.sprite, self.hero.draw_param)?;
+        let width_hero: f32 = img::width(&self.hero.sprite).into();
+        let height_hero: f32 = img::height(&self.hero.sprite).into();
+        let rect_hero = graphics::Rect::new(self.hero.draw_param.dest.x,
+                                            self.hero.draw_param.dest.y,
+                                            width_hero,
+                                            height_hero);
+        let rect_hero_mesh =
+            graphics::Mesh::new_rectangle(_ctx, graphics::DrawMode::stroke(1.0), rect_hero, graphics::WHITE)?;
+        graphics::draw(_ctx, &rect_hero_mesh, DrawParam::default())?;
         graphics::present(_ctx)?;
         Ok(())
     }
@@ -145,14 +142,15 @@ impl event::EventHandler for PaninjaGameState {
         match keycode {
             KeyCode::Right => {
                 self.hero.velocity = 1.0;
-                self.hero.hero_animation_enum = HeroAnimationEnum::Run(HERO_RUN_FRAME_COUNT);
+                self.hero.hero_animation_enum = HeroAnimationEnum::Run;
             }
             KeyCode::Left => {
                 self.hero.velocity = -1.0;
-                self.hero.hero_animation_enum = HeroAnimationEnum::Run(HERO_RUN_FRAME_COUNT)
+                self.hero.hero_animation_enum = HeroAnimationEnum::Run
             }
-            KeyCode::Down => self.hero.hero_animation_enum = HeroAnimationEnum::Dead(24),
-            _ => println!("Click on: {:?}", keycode),
+            KeyCode::Down => self.hero.hero_animation_enum = HeroAnimationEnum::Dead,
+            KeyCode::Up => self.hero.gravity = -5.0,
+            _ => println!("Click Down: {:?}", keycode),
         }
     }
 
@@ -160,22 +158,24 @@ impl event::EventHandler for PaninjaGameState {
         match keycode {
             KeyCode::Right => {
                 self.hero.velocity = 0.0;
-                self.hero.hero_animation_enum = HeroAnimationEnum::Idle(24)
+                self.hero.hero_animation_enum = HeroAnimationEnum::Idle
             }
             KeyCode::Left => {
                 self.hero.velocity = 0.0;
-                self.hero.hero_animation_enum = HeroAnimationEnum::Idle(24)
+                self.hero.hero_animation_enum = HeroAnimationEnum::Idle
             }
-            KeyCode::Down => self.hero.hero_animation_enum = HeroAnimationEnum::Idle(24),
-            _ => println!("Click on: {:?}", keycode),
+            KeyCode::Down => self.hero.hero_animation_enum = HeroAnimationEnum::Idle,
+            KeyCode::Up => self.hero.gravity = 5.0,
+            _ => println!("Click Up: {:?}", keycode),
         }
     }
 }
 
+
 fn hero_move_position(hero: &mut Hero) {
     hero.draw_param.dest = mint::Point2 {
         x: hero.draw_param.dest.x + hero.velocity,
-        y: hero.draw_param.dest.y,
+        y: hero.draw_param.dest.y + hero.gravity,
     };
 }
 
@@ -201,4 +201,27 @@ fn main() -> GameResult {
     let game_state = &mut PaninjaGameState::new(context)?;
     event::run(context, event_loop, game_state)?;
     Ok(())
+}
+
+fn hero_change_state(_ctx: &mut Context, hero: &mut Hero) {
+    match hero.hero_animation_enum {
+        HeroAnimationEnum::Dead => {
+            while timer::check_update_time(_ctx, HERO_DEAD_FRAME_COUNT) {
+                hero_change_sprite(hero);
+            }
+        }
+        HeroAnimationEnum::Run => {
+            while timer::check_update_time(_ctx, HERO_RUN_FRAME_COUNT) {
+                hero_change_sprite(hero);
+            }
+        }
+        HeroAnimationEnum::Idle => {
+            while timer::check_update_time(_ctx, HERO_RUN_FRAME_COUNT) {
+                hero_change_sprite(hero);
+            }
+        }
+        HeroAnimationEnum::Fall => {}
+        HeroAnimationEnum::Jump => {}
+        HeroAnimationEnum::Walk => {}
+    }
 }
