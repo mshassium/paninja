@@ -1,9 +1,10 @@
+use std::collections::{self, HashMap, LinkedList};
+
+use ggez::*;
 use ggez::event::{self, KeyCode, KeyMods};
 use ggez::graphics;
 use ggez::graphics::Image as img;
 use ggez::nalgebra;
-use ggez::*;
-use std::collections::{self, HashMap, LinkedList};
 
 static HERO_RUN_FRAME_COUNT: u32 = 20;
 
@@ -85,7 +86,7 @@ impl Hero {
             .dest(nalgebra::Point2::new(30.0, 30.0))
             .scale(nalgebra::Vector2::new(0.5, 0.5));
         let new_hero = Hero {
-            sprite: sprite,
+            sprite,
             draw_param: default_draw_param,
             velocity: 0.0,
             hero_assets: HeroAnimationAssets::new(ctx),
@@ -109,17 +110,17 @@ impl event::EventHandler for PaninjaGameState {
         hero_move_position(&mut self.hero);
         match self.hero.hero_animation_enum {
             HeroAnimationEnum::Dead(c) => {
-                while (timer::check_update_time(_ctx, c)) {
+                while timer::check_update_time(_ctx, c) {
                     hero_change_sprite(&mut self.hero);
                 }
             }
             HeroAnimationEnum::Run(c) => {
-                while (timer::check_update_time(_ctx, c)) {
+                while timer::check_update_time(_ctx, c) {
                     hero_change_sprite(&mut self.hero);
                 }
             }
             HeroAnimationEnum::Idle(c) => {
-                while (timer::check_update_time(_ctx, c)) {
+                while timer::check_update_time(_ctx, c) {
                     hero_change_sprite(&mut self.hero);
                 }
             }
@@ -137,7 +138,7 @@ impl event::EventHandler for PaninjaGameState {
 
     fn key_down_event(
         &mut self,
-        ctx: &mut Context,
+        _ctx: &mut Context,
         keycode: KeyCode,
         _keymods: KeyMods,
         _repeat: bool,
@@ -156,7 +157,7 @@ impl event::EventHandler for PaninjaGameState {
         }
     }
 
-    fn key_up_event(&mut self, ctx: &mut Context, keycode: KeyCode, _keymods: KeyMods) {
+    fn key_up_event(&mut self, _ctx: &mut Context, keycode: KeyCode, _keymods: KeyMods) {
         match keycode {
             KeyCode::Right => {
                 self.hero.velocity = 0.0;
@@ -183,7 +184,7 @@ fn hero_change_sprite(hero: &mut Hero) {
     let next_sprite = &hero.hero_assets.images[&hero.hero_animation_enum][hero.count_sprite];
     hero.sprite = img::clone(next_sprite);
     hero.count_sprite = hero.count_sprite + 1;
-    if (hero.count_sprite >= hero.hero_assets.images[&hero.hero_animation_enum].len()) {
+    if hero.count_sprite >= hero.hero_assets.images[&hero.hero_animation_enum].len() {
         hero.count_sprite = 0;
     }
 }
